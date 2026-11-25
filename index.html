@@ -137,6 +137,77 @@
     .boot-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #06b6d4, #10b981); animation: bootLoad 480ms cubic-bezier(0.22,1,0.36,1) forwards; }
     @keyframes bootLoad { to { width: 100%; } }
 
+    /* Procedural Non-Repeating Multi-Spectrum Full Name */
+    .hero-spectrum-wrap {
+      position: relative;
+      display: inline-block;
+    }
+    .hero-spectrum-name {
+      display: inline-block;
+      background-image: linear-gradient(
+        105deg,
+        hsl(190, 92%, 68%) 0%,
+        hsl(245, 90%, 72%) 20%,
+        hsl(305, 88%, 70%) 40%,
+        hsl(15, 92%, 68%) 60%,
+        hsl(130, 90%, 66%) 80%,
+        hsl(175, 94%, 70%) 100%
+      );
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      will-change: background-image, filter;
+      position: relative;
+      z-index: 1;
+    }
+    .hero-spectrum-sheen {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(
+        112deg,
+        transparent 0%,
+        transparent 38%,
+        rgba(255, 255, 255, 0.34) 48%,
+        rgba(255, 255, 255, 0.56) 50%,
+        rgba(255, 255, 255, 0.34) 52%,
+        transparent 62%,
+        transparent 100%
+      );
+      background-size: 240% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      animation: heroSheenSweep 7.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      z-index: 2;
+      user-select: none;
+    }
+    html[data-theme="light"] .hero-spectrum-sheen {
+      background: linear-gradient(
+        112deg,
+        transparent 0%,
+        transparent 40%,
+        rgba(255, 255, 255, 0.45) 49%,
+        rgba(255, 255, 255, 0.72) 50%,
+        rgba(255, 255, 255, 0.45) 51%,
+        transparent 60%,
+        transparent 100%
+      );
+      background-size: 240% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+    }
+    @keyframes heroSheenSweep {
+      0% { background-position: 140% 0; opacity: 0; }
+      18% { opacity: 0.78; }
+      50% { background-position: -140% 0; opacity: 0; }
+      100% { background-position: -140% 0; opacity: 0; }
+    }
+
     /* HUD Glass Card */
     .hud-card {
       position: relative;
@@ -431,8 +502,11 @@
         </div>
 
         <div class="space-y-2.5">
-          <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight leading-[1.1]">
-            Fachry Abdul Qodir <span class="bg-gradient-to-r from-cyan-400 via-indigo-400 to-emerald-400 bg-clip-text text-transparent">Zailani</span>
+          <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight leading-[1.12]">
+            <span class="hero-spectrum-wrap">
+              <span id="heroSpectrumName" class="hero-spectrum-name">Fachry Abdul Qodir Zailani</span>
+              <span class="hero-spectrum-sheen" aria-hidden="true">Fachry Abdul Qodir Zailani</span>
+            </span>
           </h1>
           <p class="font-mono text-xs sm:text-sm font-medium leading-relaxed text-cyan-400" data-i18n="heroHeadline">
             Mechatronics Engineering Student at SMK Negeri 69 Jakarta | LKS Mechatronics Trainee | Exploring Quantitative Trading, US Macroeconomics & FX Markets
@@ -1607,6 +1681,67 @@
         }
         requestAnimationFrame(physicsLoop);
       }
+
+      /* ---------------------------------------------------------------------
+         3B. PROCEDURAL NON-REPEATING MULTI-SPECTRUM FULL NAME ENGINE (60FPS)
+         --------------------------------------------------------------------- */
+      function initNameSpectrum() {
+        var nameEl = document.getElementById('heroSpectrumName');
+        if (!nameEl) return;
+
+        // 6 mutually irrational harmonic frequencies (Golden Ratio, sqrt(2), sqrt(3), pi/2, e/2, pi/4)
+        var freqs = [1.6180339, 1.4142135, 1.7320508, 1.5707963, 1.3591409, 0.785398];
+        var subFreqs = [0.4142135, 0.6180339, 0.3183098, 0.7320508, 0.2718281, 0.5772156];
+        var baseHues = [190, 245, 305, 15, 130, 175];
+        var stopPos = ['0%', '20%', '40%', '60%', '80%', '100%'];
+
+        var inView = true;
+        var tabActive = !document.hidden;
+        var startTs = performance.now();
+
+        var nameObs = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) { inView = en.isIntersecting; });
+        }, { threshold: 0.02 });
+        nameObs.observe(nameEl);
+        document.addEventListener('visibilitychange', function () { tabActive = !document.hidden; });
+
+        function renderSpectrum(now) {
+          requestAnimationFrame(renderSpectrum);
+          if (!inView || !tabActive) return;
+
+          var t = (now - startTs) * 0.001;
+          var isLight = state.theme === 'light';
+          var angle = 95 + 45 * Math.sin(t * 0.13) + 20 * Math.cos(t * 0.071);
+
+          var stops = [];
+          var hues = [];
+          for (var i = 0; i < 6; i++) {
+            var h = (baseHues[i] + t * (14 * freqs[i]) + 42 * Math.sin(t * subFreqs[i] * 0.55 + i * 1.13)) % 360;
+            if (h < 0) h += 360;
+            hues.push(h);
+
+            // Dynamic saturation (84% - 98%) & theme-aware luminous lightness
+            var sat = 91 + 7 * Math.sin(t * freqs[i] * 0.23 + i * 0.9);
+            var lit = isLight
+              ? (44 + 6 * Math.cos(t * subFreqs[i] * 0.31 + i * 1.4))  // 38% - 50% (crisp on light)
+              : (71 + 7 * Math.cos(t * subFreqs[i] * 0.31 + i * 1.4)); // 64% - 78% (luminous on dark)
+
+            stops.push('hsl(' + h.toFixed(1) + ', ' + sat.toFixed(1) + '%, ' + lit.toFixed(1) + '%) ' + stopPos[i]);
+          }
+
+          nameEl.style.backgroundImage = 'linear-gradient(' + angle.toFixed(2) + 'deg, ' + stops.join(', ') + ')';
+
+          var hMid = hues[2].toFixed(1);
+          var hEnd = hues[5].toFixed(1);
+          if (isLight) {
+            nameEl.style.filter = 'drop-shadow(0 0 14px hsla(' + hMid + ', 88%, 46%, 0.22)) drop-shadow(0 0 28px hsla(' + hEnd + ', 84%, 42%, 0.11))';
+          } else {
+            nameEl.style.filter = 'drop-shadow(0 0 18px hsla(' + hMid + ', 92%, 62%, 0.32)) drop-shadow(0 0 36px hsla(' + hEnd + ', 88%, 56%, 0.16))';
+          }
+        }
+        requestAnimationFrame(renderSpectrum);
+      }
+      initNameSpectrum();
 
       /* ---------------------------------------------------------------------
          4. TOUCH-SAFE WEBGL 3D HERO (THREE.JS + 2D FALLBACK)
